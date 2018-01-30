@@ -55,7 +55,7 @@ public class StepHistory {
         this.googleFitManager = googleFitManager;
     }
 
-    public ReadableArray aggregateDataByDate(long startTime, long endTime) {
+    public ReadableArray aggregateDataByDate(long startTime, long endTime, int bucketMinutes) {
 
         DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
         dateFormat.setTimeZone(TimeZone.getDefault());
@@ -172,7 +172,7 @@ public class StepHistory {
                             ,
                             //DataType.AGGREGATE_STEP_COUNT_DELTA
                             aggregateType)
-                        .bucketByTime(12, TimeUnit.HOURS) // Half-day resolution
+                        .bucketByTime(bucketMinutes, TimeUnit.MINUTES) // Half-day resolution
                         .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
                         .build();
             } else {

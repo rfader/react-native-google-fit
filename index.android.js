@@ -52,8 +52,10 @@ class RNGoogleFit {
     getDailyStepCountSamples(options, callback) {
         let startDate = options.startDate != undefined ? Date.parse(options.startDate) : (new Date()).setHours(0,0,0,0);
         let endDate = options.endDate != undefined ? Date.parse(options.endDate) : (new Date()).valueOf();
+        let bucketMinutes = options.bucketMinutes != undefined ? parseInt(options.bucketMinutes) : (12 * 60);
         googleFit.getDailyStepCountSamples( startDate,
             endDate,
+            bucketMinutes,
             (msg) => {
             callback(msg, false);
     },

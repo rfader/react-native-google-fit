@@ -104,11 +104,12 @@ LifecycleEventListener {
     @ReactMethod
     public void getDailyStepCountSamples(double startDate,
                                          double endDate,
+                                         int bucketMinutes,
                                          Callback errorCallback,
                                          Callback successCallback) {
         
         try {
-            successCallback.invoke(mGoogleFitManager.getStepHistory().aggregateDataByDate((long)startDate, (long)endDate));
+            successCallback.invoke(mGoogleFitManager.getStepHistory().aggregateDataByDate((long)startDate, (long)endDate, (int)bucketMinutes));
         } catch (IllegalViewOperationException e) {
             errorCallback.invoke(e.getMessage());
         }
