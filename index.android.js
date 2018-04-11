@@ -8,8 +8,15 @@ import {
 const googleFit = NativeModules.RNGoogleFit;
 
 class RNGoogleFit {
-    authorize() {
+    eventListeners = []
+
+    authorize () {
         googleFit.authorize();
+    }
+
+    removeListeners = () => {
+        this.eventListeners.forEach(eventListener => eventListener.remove())
+        this.eventListeners = []
     }
 
     /**
@@ -18,18 +25,20 @@ class RNGoogleFit {
      * Simply create an event listener for the {DATA_TYPE}_RECORDING (ex. STEP_RECORDING)
      * and check for {recording: true} as the event data
      */
-    startRecording(callback) {
+    startRecording = (callback) => {
         googleFit.startFitnessRecording();
 
-        DeviceEventEmitter.addListener(
+        const recordingObserver = DeviceEventEmitter.addListener(
             'STEP_RECORDING',
             (steps) => callback(steps));
 
-        DeviceEventEmitter.addListener(
+        const distanceObserver = DeviceEventEmitter.addListener(
             'DISTANCE_RECORDING',
             (distance) => callback(distance));
 
         // TODO: add mote activity listeners
+
+        this.eventListeners.push(recordingObserver, distanceObserver)
     }
 
     //Will be deprecated in future releases
@@ -46,32 +55,30 @@ class RNGoogleFit {
     /**
      * Get the total steps per day over a specified date range.
      * @param {Object} options getDailyStepCountSamples accepts an options object containing required startDate: ISO8601Timestamp and endDate: ISO8601Timestamp.
-     * @callback callback The function will be called with an array of elements.
+     * @param {Function} callback The function will be called with an array of elements.
      */
 
-    getDailyStepCountSamples(options, callback) {
+    getDailyStepCountSamples = (options, callback) => {
         let startDate = options.startDate != undefined ? Date.parse(options.startDate) : (new Date()).setHours(0,0,0,0);
         let endDate = options.endDate != undefined ? Date.parse(options.endDate) : (new Date()).valueOf();
         let bucketMinutes = options.bucketMinutes != undefined ? parseInt(options.bucketMinutes) : (12 * 60);
-        googleFit.getDailyStepCountSamples( startDate,
-            endDate,
-            bucketMinutes,
-            (msg) => {
-            callback(msg, false);
-    },
-        (res) => {
-            if (res.length>0) {
-                callback(false, res.map(function(dev) {
-                        var obj = {};
-                        obj.source = dev.source.appPackage + ((dev.source.stream) ? ":" + dev.source.stream : "");
-                        obj.steps = this.buildDailySteps(dev.steps);
-                        return obj;
-                    }, this)
-                );
-            } else {
-                callback("There is no any steps data for this period", false);
+
+        googleFit.getDailyStepCountSamples(startDate, endDate, bucketMinutes
+            msg => callback(msg, false),
+            (res) => {
+              if (res.length>0) {
+                  callback(false, res.map(function(dev) {
+                          let obj = {};
+                          obj.source = dev.source.appPackage + ((dev.source.stream) ? ":" + dev.source.stream : "");
+                          obj.steps = this.buildDailySteps(dev.steps);
+                          return obj;
+                      }, this)
+                  );
+              } else {
+                  callback("There is no any steps data for this period", false);
+              }
             }
-        });
+        );
     }
 
     buildDailySteps(steps) {
@@ -93,11 +100,11 @@ class RNGoogleFit {
             results[dateFormatted] += step.steps;
         }
 
-        let results2 = [];
+        let dateMap = [];
         for (let index in results) {
-            results2.push({date: index, value: results[index]});
+            dateMap.push({date: index, value: results[index]});
         }
-        return results2;
+        return dateMap;
     }
 
     /**
@@ -107,13 +114,13 @@ class RNGoogleFit {
      */
 
     getDailyDistanceSamples(options, callback) {
-        let startDate = options.startDate != undefined ? Date.parse(options.startDate) : (new Date()).setHours(0,0,0,0);
-        let endDate = options.endDate != undefined ? Date.parse(options.endDate) : (new Date()).valueOf();
+        const startDate = options.startDate != undefined ? Date.parse(options.startDate) : (new Date()).setHours(0,0,0,0);
+        const endDate = options.endDate != undefined ? Date.parse(options.endDate) : (new Date()).valueOf();
         googleFit.getDailyDistanceSamples( startDate,
             endDate,
             (msg) => {
             callback(msg, false);
-    },
+        },
         (res) => {
             if (res.length>0) {
                 res = res.map((el) => {
@@ -139,27 +146,28 @@ class RNGoogleFit {
      */
 
     getDailyCalorieSamples(options, callback) {
-        let startDate = Date.parse(options.startDate);
-        let endDate = Date.parse(options.endDate);
-        googleFit.getDailyCalorieSamples( startDate,
+        const startDate = Date.parse(options.startDate);
+        const endDate = Date.parse(options.endDate);
+        googleFit.getDailyCalorieSamples(
+            startDate,
             endDate,
             (msg) => {
-            callback(msg, false);
-    },
-        (res) => {
-            if (res.length>0) {
-                res = res.map((el) => {
-                    if (el.calorie) {
-                    el.startDate = new Date(el.startDate).toISOString();
-                    el.endDate = new Date(el.endDate).toISOString();
-                    return el;
+                callback(msg, false);
+            },
+            (res) => {
+                if (res.length>0) {
+                    res = res.map((el) => {
+                        if (el.calorie) {
+                            el.startDate = new Date(el.startDate).toISOString();
+                            el.endDate = new Date(el.endDate).toISOString();
+                            return el;
+                        }
+                    });
+                    callback(false, res.filter(day => day != undefined));
+                } else {
+                    callback("There is no any calorie data for this period", false);
                 }
             });
-                callback(false, res.filter(day => day != undefined));
-            } else {
-                callback("There is no any calorie data for this period", false);
-            }
-        });
     }
 
 
@@ -170,19 +178,19 @@ class RNGoogleFit {
      * @callback callback The function will be called with an array of elements.
      */
 
-    getWeightSamples(options, callback) {
-        let startDate = Date.parse(options.startDate);
-        let endDate = Date.parse(options.endDate);
+    getWeightSamples = (options, callback) => {
+        const startDate = options.startDate != undefined ? Date.parse(options.startDate) : (new Date()).setHours(0,0,0,0);
+        const endDate = options.endDate != undefined ? Date.parse(options.endDate) : (new Date()).valueOf();
         googleFit.getWeightSamples( startDate,
             endDate,
             (msg) => {
             callback(msg, false);
-    },
+        },
         (res) => {
             if (res.length>0) {
                 res = res.map((el) => {
                     if (el.value) {
-                    if (options.unit == 'pound') {
+                    if (options.unit === 'pound') {
                         el.value = this.KgToLbs(el.value); //convert back to pounds
                     }
                     el.startDate = new Date(el.startDate).toISOString();
@@ -197,91 +205,93 @@ class RNGoogleFit {
         });
     }
 
-    saveWeight(options, callback) {
-        if (options.unit == 'pound') {
+    saveWeight = (options, callback) => {
+        if (options.unit === 'pound') {
             options.value = this.lbsAndOzToK({ pounds: options.value, ounces: 0 }); //convert pounds and ounces to kg
         }
         options.date = Date.parse(options.date);
         googleFit.saveWeight( options,
             (msg) => {
             callback(msg,false);
-    },
+        },
         (res) => {
             callback(false,res);
-
         });
     }
 
-    deleteWeight(options, callback) {
-        if (options.unit == 'pound') {
+    deleteWeight = (options, callback) => {
+        if (options.unit === 'pound') {
             options.value = this.lbsAndOzToK({ pounds: options.value, ounces: 0 }); //convert pounds and ounces to kg
         }
         options.date = Date.parse(options.date);
         googleFit.deleteWeight( options,
             (msg) => {
-            callback(msg,false);
-    },
+            callback(msg, false);
+        },
         (res) => {
-            callback(false,res);
-
+            callback(false, res);
         });
     }
 
     isAvailable(callback) { // true if GoogleFit installed
         googleFit.isAvailable(
             (msg) => {
-            callback(msg,false);
-    },
+            callback(msg, false);
+        },
         (res) => {
-            callback(false,res);
+            callback(false, res);
         });
     }
 
     isEnabled(callback) { // true if permission granted
         googleFit.isEnabled(
             (msg) => {
-            callback(msg,false);
-    },
+            callback(msg, false);
+        },
         (res) => {
-            callback(false,res);
+            callback(false, res);
         });
     }
 
-    observeSteps(callback) {
-        DeviceEventEmitter.addListener(
+    observeSteps = (callback) => {
+        const stepsObserver = DeviceEventEmitter.addListener(
             'StepChangedEvent',
             (steps) => callback(steps)
         );
         googleFit.observeSteps();
+        this.eventListeners.push(stepsObserver)
     }
 
-    observeHistory(callback) {
-        DeviceEventEmitter.addListener(
+    observeHistory = (callback) => {
+        const historyObserver = DeviceEventEmitter.addListener(
             'StepHistoryChangedEvent',
             (steps) => callback(steps)
         );
+        this.eventListeners.push(historyObserver)
     }
 
-    onAuthorize(callback) {
-        DeviceEventEmitter.addListener(
+    onAuthorize = (callback) => {
+        const authObserver = DeviceEventEmitter.addListener(
             'GoogleFitAuthorizeSuccess',
             (authorized) => callback(authorized)
         );
+        this.eventListeners.push(authObserver)
     }
 
-    onAuthorizeFailure(callback) {
-        DeviceEventEmitter.addListener(
+    onAuthorizeFailure = (callback) => {
+        const authFailedObserver = DeviceEventEmitter.addListener(
             'GoogleFitAuthorizeFailure',
             (authorized) => callback(authorized)
         );
+        this.eventListeners.push(authFailedObserver)
     }
 
-    usubscribeListeners() {
-        DeviceEventEmitter.removeAllListeners();
+    unsubscribeListeners = () => {
+        this.removeListeners()
     }
 
     lbsAndOzToK(imperial) {
-        let pounds = imperial.pounds + imperial.ounces / 16;
+        const pounds = imperial.pounds + imperial.ounces / 16;
         return pounds * 0.45359237;
     }
 
