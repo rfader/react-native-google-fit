@@ -63,7 +63,7 @@ class RNGoogleFit {
         let endDate = options.endDate != undefined ? Date.parse(options.endDate) : (new Date()).valueOf();
         let bucketMinutes = options.bucketMinutes != undefined ? parseInt(options.bucketMinutes) : (12 * 60);
 
-        googleFit.getDailyStepCountSamples(startDate, endDate, bucketMinutes
+        googleFit.getDailyStepCountSamples(startDate, endDate, bucketMinutes,
             msg => callback(msg, false),
             (res) => {
               if (res.length>0) {
