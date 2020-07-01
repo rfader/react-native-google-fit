@@ -117,7 +117,7 @@ class RNGoogleFit {
               obj.source =
                 dev.source.appPackage +
                 (dev.source.stream ? ':' + dev.source.stream : '')
-              obj.steps = buildDailySteps(dev.steps)
+              obj.steps = dev.steps // buildDailySteps(dev.steps)
               return obj
             }, this)
           )
